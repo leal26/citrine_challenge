@@ -1,4 +1,5 @@
-from scipy import spatial, stats
+from scipy.stats import gaussian_kde
+from scipy.spatial.distance import directed_hausdorff
 import numpy as np
 
 
@@ -26,8 +27,8 @@ class Explore():
             distance = min(norms)
 
             if type(crowding_distance) == str:
-                crowding_distance = spatial.distance.directed_hausdorff(np.array(self.output),
-                                                                        np.array([x]))[0]
+                crowding_distance = directed_hausdorff(np.array(self.output),
+                                                       np.array([x]))[0]
             return distance >= crowding_distance
 
     def random(self, bounds=None, crowding_distance=None):
@@ -43,20 +44,21 @@ class Explore():
                 self.output[counter, :] = x_try
                 counter += 1
 
-    def genetic(self, bounds=None):
-        from pyDOE import lhs
-        # start with a random population
-        self.output_try = lhs(self.constraints.n_dim,
-                              samples=self.n_results,
-                              criterion='center')
-        self.output_try = self._scale2bounds(self.output_try, bounds)
-        satisfy_constraints = []
-        for x in self.output_try:
-            satisfy_constraints.append(self.constraints.apply(x))
-            print(x)
-            if self.constraints.apply(x):
-                print('ALKJAS')
-        print(satisfy_constraints)
+    def post_filter(self, n_target):
+        data = []
+        self.output = np.array(self.output)
+        for i in range(self.n_results):
+            norms = np.linalg.norm(self.output - np.array([self.output[i, :]]),
+                                   axis=1)
+            distance = sorted(norms)[1]
+            data.append((distance, np.where(norms == distance)))
+
+        sorted_data = sorted(data)
+        counter = 0
+        while counter != self.n_results - n_target:
+            self.output[sorted_data[counter][1], :] = 0
+            counter += 1
+        self.output = self.output[~np.all(self.output == 0, axis=1)]
 
     def write2file(self, filename='output.txt'):
         np.savetxt(filename, self.output, delimiter='\t')
@@ -69,7 +71,7 @@ class Explore():
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
 
-        self.kernel = stats.gaussian_kde(self.output[:, index].T)
+        self.kernel = gaussian_kde(self.output[:, index].T)
         X, Y = np.mgrid[xmin:xmax:complex(grid_size[0]),
                         ymin:ymax:complex(grid_size[1])]
         positions = np.vstack([X.ravel(), Y.ravel()])
@@ -77,7 +79,7 @@ class Explore():
 
         # P = self.kernel(A.flatten(), V.flatten())
 
-        plt.figure()
+        # plt.figure()
         plt.contourf(X, Y, P)
         if plot_training:
             plt.scatter(x, y)

@@ -4,7 +4,7 @@ from constraints import Constraint
 from exploration import Explore
 
 
-c = Constraint(r'.\formulation.txt')
+c = Constraint(r'.\mixture.txt')
 e = Explore(c, 1000)
 
 # start = time.time()
@@ -24,9 +24,10 @@ e = Explore(c, 1000)
 # plt.scatter(x, y, c='r')
 # plt.show()
 
-e.random(crowding_distance=0.1)
-e.plotting(index=(2, 3))
-
+plt.figure()
 e.random(crowding_distance='Hausdorff')
-e.plotting(index=(2, 3))
+e.plotting(index=(0, 1))
+plt.figure()
+e.post_filter(50)
+e.plotting(index=(0, 1))
 plt.show()
